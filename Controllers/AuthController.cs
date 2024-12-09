@@ -29,20 +29,21 @@ namespace UniversityAPI.Controllers
         private static string GenerateJwtToken(string username)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.UTF8.GetBytes("SimpleDevelopmentKey123!");
+            var key = Encoding.UTF8.GetBytes("ThisIsASecureKeyOfAtLeast32Characters!"); // Match this key to the one in Program.cs
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(new[]
                 {
-                    new Claim(ClaimTypes.Name, username),
-                    new Claim(ClaimTypes.Role, "User")
-                }),
+            new Claim(ClaimTypes.Name, username),
+            new Claim(ClaimTypes.Role, "User")
+        }),
                 Expires = DateTime.UtcNow.AddHours(1),
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
             };
             var token = tokenHandler.CreateToken(tokenDescriptor);
             return tokenHandler.WriteToken(token);
         }
+
     }
 
     // DTO for Login Request
