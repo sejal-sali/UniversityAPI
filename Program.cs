@@ -1,24 +1,35 @@
-using Microsoft.EntityFrameworkCore;
-using UniversityAPI.Context;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// Hardcoded key for development purposes
+var key = "SimpleDevelopmentKey123!"; // Simple and not secure
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = "YourApp",
+            ValidAudience = "YourApp",
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key))
+        };
+    });
+
+// Other service configurations
 builder.Services.AddControllers();
-
-// Configure DbContext with MySQL
-var connectionString = "server=localhost;database=universityapi;user=root;password=";
-builder.Services.AddDbContext<UniversityContext>(options =>
-    options.UseMySql(connectionString, new MySqlServerVersion(new Version(10, 4, 17))));
-
-
-// Add Swagger support
-builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// Middleware
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -26,5 +37,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseAuthentication();
+app.UseAuthorization();
 app.MapControllers();
+
 app.Run();

@@ -17,5 +17,8 @@ namespace UniversityAPI.Models
         public University? University { get; set; }
 
         public ICollection<Course>? Courses { get; set; }
+
+        // Add Students navigation property for one-to-many relationship
+        public ICollection<Student>? Students { get; set; }
     }
 }

@@ -14,23 +14,23 @@ namespace UniversityAPI.Context
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            // University-Department Relationship
             modelBuilder.Entity<University>()
                 .HasMany(u => u.Departments)
                 .WithOne(d => d.University)
                 .HasForeignKey(d => d.UniversityId);
 
-            // Department-Course Relationship
             modelBuilder.Entity<Department>()
-                .HasMany(d => d.Courses)
-                .WithOne(c => c.Department)
-                .HasForeignKey(c => c.DepartmentId);
+            .HasMany(d => d.Students)
+            .WithOne(s => s.Department)
+            .HasForeignKey(s => s.DepartmentId);
 
-            // Department-Student Relationship
+
             modelBuilder.Entity<Department>()
                 .HasMany(d => d.Students)
                 .WithOne(s => s.Department)
                 .HasForeignKey(s => s.DepartmentId);
+
+            base.OnModelCreating(modelBuilder);
         }
     }
 }

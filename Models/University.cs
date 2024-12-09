@@ -17,5 +17,6 @@ namespace UniversityAPI.Models
         public string? UniversityType { get; set; }
 
         public ICollection<Department>? Departments { get; set; }
+        public string Name { get; internal set; }
     }
 }
