@@ -1,85 +1,174 @@
-﻿namespace UniversityAPI.Controllers
-{
-    using Microsoft.AspNetCore.Authorization;
-    using Microsoft.AspNetCore.Mvc;
-    using Microsoft.EntityFrameworkCore;
-    using UniversityAPI.Context;
-    using UniversityAPI.DTOs;
-    using UniversityAPI.Models;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using UniversityAPI.Context;
+using UniversityAPI.Models;
+using UniversityAPI.DTOs;
 
+namespace UniversityAPI.Controllers
+{
     [Route("api/[controller]")]
     [ApiController]
     public class CoursesController : ControllerBase
     {
-        private readonly UniversityContext _context;
+        private readonly CourseContext _context;
 
-        public CoursesController(UniversityContext context)
+        public CoursesController(CourseContext context)
         {
             _context = context;
         }
 
         // GET: api/Courses
-        /// <summary>
-        /// Retrieves all courses with their associated department.
-        /// </summary>
-        /// <returns>List of courses</returns>
-        [Authorize]
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<CourseDTO>>> GetCourses()
+        [HttpGet("GetCourses")]
+        public async Task<ActionResult<IEnumerable<CourseBasicDTO>>> GetCourses()
         {
-            return await _context.Courses
-                .Include(c => c.Department)
-                .Select(c => new CourseDTO
+            var courses = await _context.Course
+                .Select(c => new CourseBasicDTO
                 {
-                    CourseId = c.CourseId,
                     CourseName = c.CourseName,
-                    DepartmentName = c.Department!.DepartmentName
+                    Credit_Hours = c.Credit_Hours
                 })
                 .ToListAsync();
+
+            return courses;
         }
 
-        // POST: api/Courses
-        /// <summary>
-        /// Adds a new course.
-        /// </summary>
-        /// <param name="courseDTO">Details of the course to add</param>
-        /// <returns>The newly created course</returns>
-        [Authorize(Roles = "Admin")]
-        [HttpPost]
-        public async Task<ActionResult<Course>> AddCourse(CourseCreateDTO courseDTO)
+        // GET: api/Courses/5
+        [HttpGet("GetCourseById{id}")]
+        public async Task<ActionResult<CourseDetailsDTO>> GetCourse(int id)
         {
-            var course = new Course
-            {
-                CourseName = courseDTO.CourseName,
-                DepartmentId = courseDTO.DepartmentId
-            };
+            var course = await _context.Course
+                .Include(c => c.Department)
+                .Where(c => c.CourseId == id)
+                .Select(c => new CourseDetailsDTO
+                {
+                    CourseName = c.CourseName,
+                    Credit_Hours = c.Credit_Hours,
+                    Description = c.Description,
+                    DepartmentName = c.Department.DepartmentName,
+                    DepartmentHead = c.Department.DepartmentHead
+                })
+                .FirstOrDefaultAsync();
 
-            _context.Courses.Add(course);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction(nameof(GetCourses), new { id = course.CourseId }, course);
-        }
-
-        // DELETE: api/Courses/5
-        /// <summary>
-        /// Deletes a course by ID.
-        /// </summary>
-        /// <param name="id">The ID of the course to delete</param>
-        /// <returns>No content</returns>
-        [Authorize(Roles = "Admin")]
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteCourse(int id)
-        {
-            var course = await _context.Courses.FindAsync(id);
             if (course == null)
             {
                 return NotFound();
             }
 
-            _context.Courses.Remove(course);
+            return course;
+        }
+
+
+        // PUT: api/Courses/5
+        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
+        [HttpPut("UpdateCourseBy{id}")]
+        public async Task<IActionResult> PutCourse(int id, CourseUpdateDTO updateCourseDTO)
+        {
+            var course = await _context.Course.FindAsync(id);
+            if (course == null)
+            {
+                return NotFound();
+            }
+
+            // Update course properties with values from CourseUpdateDTO
+            course.CourseName = updateCourseDTO.CourseName;
+            course.Credit_Hours = updateCourseDTO.Credit_Hours;
+            course.Description = updateCourseDTO.Description;
+
+            _context.Entry(course).State = EntityState.Modified;
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!CourseExists(id))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
+                }
+            }
+
+            return NoContent();
+        }
+
+        // GET: api/Courses/WithDepartment
+        [HttpGet("GetCoursesWithDepartment")]
+        public async Task<ActionResult<IEnumerable<CourseWithDepartmentDTO>>> GetCoursesWithDepartment()
+        {
+            var coursesWithDepartment = await _context.Course
+                .Include(c => c.Department)
+                .Select(c => new CourseWithDepartmentDTO
+                {
+                    CourseName = c.CourseName,
+                    Credit_Hours = c.Credit_Hours,
+                    DepartmentName = c.Department.DepartmentName,
+                    DepartmentHead = c.Department.DepartmentHead
+                })
+                .ToListAsync();
+
+            return coursesWithDepartment;
+        }
+
+
+        
+
+        // POST: api/Courses
+        [HttpPost("AddCourse")]
+        public async Task<ActionResult<Course>> PostCourse(CourseCreateDTO courseDTO)
+        {
+            var department = await _context.Department.FindAsync(courseDTO.DepartmentId);
+            if (department == null)
+            {
+                return BadRequest("Department not found.");
+            }
+
+            var course = new Course
+            {
+                CourseName = courseDTO.CourseName,
+                Credit_Hours = courseDTO.Credit_Hours,
+                Description = courseDTO.Description,
+                DepartmentId = courseDTO.DepartmentId
+            };
+
+            _context.Course.Add(course);
+            await _context.SaveChangesAsync();
+
+            return CreatedAtAction("GetCourse", new { id = course.CourseId }, course);
+        }
+
+
+        // DELETE: api/Courses/5
+        [HttpDelete("DeleteCourseBy{id}")]
+        public async Task<IActionResult> DeleteCourse(int id)
+        {
+            if (_context.Course == null)
+            {
+                return NotFound();
+            }
+            var course = await _context.Course.FindAsync(id);
+            if (course == null)
+            {
+                return NotFound();
+            }
+
+            _context.Course.Remove(course);
             await _context.SaveChangesAsync();
 
             return NoContent();
+        }
+
+        private bool CourseExists(int id)
+        {
+            return (_context.Course?.Any(e => e.CourseId == id)).GetValueOrDefault();
         }
     }
 }

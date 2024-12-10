@@ -1,97 +1,59 @@
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
 using UniversityAPI.Context;
+using MySql.Data.MySqlClient;
 
-var builder = WebApplication.CreateBuilder(args);
-
-// Hardcoded key for development purposes
-var key = "ThisIsASecureKeyOfAtLeast32Characters!";
-
-// Configure Database Connection
-var connectionString = "server=localhost;database=universityapi;user=root;password="; 
-
-builder.Services.AddDbContext<UniversityContext>(options =>
-    options.UseMySql(connectionString, new MySqlServerVersion(new Version(8, 0, 32))));
-
-// Configure CORS
-builder.Services.AddCors(options =>
+namespace UniversityAPI
 {
-    options.AddPolicy("AllowAll", policy =>
+    public class Program
     {
-        policy.AllowAnyOrigin()
-              .AllowAnyMethod()
-              .AllowAnyHeader();
-    });
-});
-
-// Configure JWT authentication
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
-    {
-        options.TokenValidationParameters = new TokenValidationParameters
+        public static void Main(string[] args)
         {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            ValidIssuer = "YourApp", // Replace with your actual issuer
-            ValidAudience = "YourApp", // Replace with your actual audience
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)) // Ensure the key is at least 32 characters long
-        };
-    });
+            var builder = WebApplication.CreateBuilder(args);
 
-// Add Controllers and Swagger
-builder.Services.AddControllers();
-builder.Services.AddSwaggerGen(c =>
-{
-    c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
-    {
-        Title = "University API",
-        Version = "v1"
-    });
+            // Add services to the container.
+            builder.Services.AddControllers();
 
-    // Add JWT Authentication to Swagger
-    c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
-    {
-        Name = "Authorization",
-        Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
-        Scheme = "Bearer",
-        BearerFormat = "JWT",
-        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
-        Description = "JWT Authorization header using the Bearer scheme. Example: \"Bearer {token}\""
-    });
+            var connectionString = "server=localhost;database=universityapi;user=root;password=";
 
-    c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
-    {
-        {
-            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+            builder.Services.AddDbContext<UniversityContext>(options =>
+                options.UseMySql(connectionString, new MySqlServerVersion(new Version(10, 4, 17))));
+
+            builder.Services.AddDbContext<CourseContext>(options =>
+                options.UseMySql(connectionString, new MySqlServerVersion(new Version(10, 4, 17))));
+
+            builder.Services.AddDbContext<DepartmentContext>(options =>
+                options.UseMySql(connectionString, new MySqlServerVersion(new Version(10, 4, 17))));
+
+            builder.Services.AddEndpointsApiExplorer();
+            builder.Services.AddSwaggerGen();
+
+            // Add CORS configuration before building the application
+            builder.Services.AddCors(options =>
             {
-                Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                options.AddPolicy("AllowAll", policy =>
                 {
-                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
-                    Id = "Bearer"
-                }
-            },
-            new string[] {}
+                    policy.AllowAnyOrigin()
+                          .AllowAnyMethod()
+                          .AllowAnyHeader();
+                });
+            });
+
+            var app = builder.Build();
+
+            // Configure the HTTP request pipeline.
+            if (app.Environment.IsDevelopment())
+            {
+                app.UseSwagger();
+                app.UseSwaggerUI();
+            }
+
+            app.UseHttpsRedirection();
+
+            //app.UseAuthorization();
+
+            app.MapControllers();
+            app.UseCors("AllowAll");
+            app.Run();
         }
-    });
-});
-
-var app = builder.Build();
-
-// Middleware configuration
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    }
 }
-
-app.UseCors("AllowAll"); // Enable CORS for all origins
-app.UseHttpsRedirection();
-app.UseAuthentication(); // Enable authentication middleware
-app.UseAuthorization(); // Enable authorization middleware
-app.MapControllers();
-
-app.Run();

@@ -1,24 +1,20 @@
-﻿using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace UniversityAPI.Models
 {
     public class Department
     {
         [Key]
-        public int DepartmentId { get; set; }
-
         [Required]
-        public string DepartmentName { get; set; } = string.Empty;
-
+        public int DepartmentId { get; set; }
+        [Required(ErrorMessage = "Department Name is required.")]
+        public string? DepartmentName { get; set; }
         public string? DepartmentHead { get; set; }
 
+        [ForeignKey("University")]
+        [Required]
         public int UniversityId { get; set; }
-        public University? University { get; set; }
-
-        public ICollection<Course>? Courses { get; set; }
-
-        // Add Students navigation property for one-to-many relationship
-        public ICollection<Student>? Students { get; set; }
+        public University University { get; set; }
     }
 }

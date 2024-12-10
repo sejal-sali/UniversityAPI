@@ -1,12 +1,16 @@
-﻿namespace UniversityAPI.Controllers
-{
-    using Microsoft.AspNetCore.Authorization;
-    using Microsoft.AspNetCore.Mvc;
-    using Microsoft.EntityFrameworkCore;
-    using UniversityAPI.Context;
-    using UniversityAPI.DTOs;
-    using UniversityAPI.Models;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using UniversityAPI.Context;
+using UniversityAPI.DTOs;
+using UniversityAPI.Models;
 
+namespace UniversityAPI.Controllers
+{
     [Route("api/[controller]")]
     [ApiController]
     public class UniversitiesController : ControllerBase
@@ -16,73 +20,153 @@
         public UniversitiesController(UniversityContext context)
         {
             _context = context;
+            //context.Database.EnsureCreated();
         }
+
+        [HttpGet("GetUniversityIds")]
+        public async Task<ActionResult<IEnumerable<UniversityIdNameDTO>>> GetUniversityIds()
+        {
+            try
+            {
+                var universityIdNames = await _context.University
+                    .Select(u => new UniversityIdNameDTO
+                    {
+                        UniversityId = u.UniversityId,
+                        UniversityName = u.UniversityName
+                    })
+                    .ToListAsync();
+
+                return Ok(universityIdNames);
+            }
+            catch (Exception ex)
+            {
+                // Log the exception for debugging purposes
+                // Log(ex.Message);
+                return StatusCode(500, "An error occurred while processing your request." + ex.ToString());
+            }
+        }
+
 
         // GET: api/Universities
-        /// <summary>
-        /// Retrieves all universities with their associated departments.
-        /// </summary>
-        /// <returns>List of universities</returns>
-        [Authorize]
-        [HttpGet]
+        [HttpGet("GetUniversities")]
         public async Task<ActionResult<IEnumerable<UniversityDTO>>> GetUniversities()
         {
-            return await _context.Universities
-                .Include(u => u.Departments)
+            var universities = await _context.University
                 .Select(u => new UniversityDTO
                 {
-                    UniversityId = u.UniversityId,
-                    UniversityName = u.Name,
-                    Departments = u.Departments.Select(d => new DepartmentDTO
-                    {
-                        DepartmentId = d.DepartmentId,
-                        DepartmentName = d.DepartmentName
-                    }).ToList()
+                    UniversityName = u.UniversityName,
+                    Contact = u.Contact,
+                    Location = u.Location
                 })
                 .ToListAsync();
+
+            return universities;
         }
 
-        // POST: api/Universities
-        /// <summary>
-        /// Adds a new university.
-        /// </summary>
-        /// <param name="universityDTO">Details of the university to add</param>
-        /// <returns>The newly created university</returns>
-        [Authorize(Roles = "Admin")]
-        [HttpPost]
-        public async Task<ActionResult<University>> AddUniversity(UniversityCreateDTO universityDTO)
+        // GET: api/Universities/5
+        [HttpGet("GetUniversityBy{id}")]
+        public async Task<ActionResult<UniversityDTODetails>> GetUniversity(int id)
         {
-            var university = new University
-            {
-                Name = universityDTO.UniversityName
-            };
+            var university = await _context.University
+                .Where(u => u.UniversityId == id)
+                .Select(u => new UniversityDTODetails
+                {
+                    UniversityName = u.UniversityName,
+                    EstablishmentYear = u.EstablishmentYear,
+                    UniversityType = u.UniversityType,
+                    Contact = u.Contact,
+                    Location = u.Location
+                })
+                .FirstOrDefaultAsync();
 
-            _context.Universities.Add(university);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction(nameof(GetUniversities), new { id = university.UniversityId }, university);
-        }
-
-        // DELETE: api/Universities/5
-        /// <summary>
-        /// Deletes a university by ID.
-        /// </summary>
-        /// <param name="id">The ID of the university to delete</param>
-        /// <returns>No content</returns>
-        [Authorize(Roles = "Admin")]
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteUniversity(int id)
-        {
-            var university = await _context.Universities.FindAsync(id);
             if (university == null)
             {
                 return NotFound();
             }
 
-            _context.Universities.Remove(university);
+            return university;
+        }
+
+        // PUT: api/Universities/5
+        [HttpPut("UpdateUniversityBy{id}")]
+        public async Task<IActionResult> PutUniversity(int id, UniversityUpdateDTO universityDTO)
+        {
+            var university = await _context.University.FindAsync(id);
+            if (university == null)
+            {
+                return NotFound();
+            }
+
+            // Update university properties with values from UniversityUpdateDTO
+            university.UniversityName = universityDTO.UniversityName;
+            university.UniversityType = universityDTO.UniversityType;
+            university.Contact = universityDTO.Contact;
+            university.Location = universityDTO.Location;
+
+            _context.Entry(university).State = EntityState.Modified;
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!UniversityExists(id))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
+                }
+            }
+
+            return NoContent();
+        }
+
+        // POST: api/Universities
+        [HttpPost("AddUniversity")]
+        public async Task<ActionResult<University>> PostUniversity(UniversityCreateDTO universityDTO)
+        {
+            var university = new University
+            {
+                UniversityName = universityDTO.UniversityName,
+                EstablishmentYear = universityDTO.EstablishmentYear,
+                UniversityType = universityDTO.UniversityType,
+                Contact = universityDTO.Contact,
+                Location = universityDTO.Location
+            };
+
+            _context.University.Add(university);
+            await _context.SaveChangesAsync();
+
+            return CreatedAtAction(nameof(GetUniversity), new { id = university.UniversityId }, university);
+        }
+
+
+        // DELETE: api/Universities/5
+        [HttpDelete("DeleteUniversityBy{id}")]
+        public async Task<IActionResult> DeleteUniversity(int id)
+        {
+            if (_context.University == null)
+            {
+                return NotFound();
+            }
+            var university = await _context.University.FindAsync(id);
+            if (university == null)
+            {
+                return NotFound();
+            }
+
+            _context.University.Remove(university);
             await _context.SaveChangesAsync();
 
             return NoContent();
+        }
+
+        private bool UniversityExists(int id)
+        {
+            return (_context.University?.Any(e => e.UniversityId == id)).GetValueOrDefault();
         }
     }
 }
