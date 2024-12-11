@@ -3,18 +3,22 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace UniversityAPI.Models
 {
+    // Represents a department within the university.
     public class Department
     {
-        [Key]
-        [Required]
-        public int DepartmentId { get; set; }
-        [Required(ErrorMessage = "Department Name is required.")]
-        public string? DepartmentName { get; set; }
-        public string? DepartmentHead { get; set; }
+        [Key] // Denotes the primary key.
+        [Required] 
+        public int DepartmentId { get; set; } 
 
-        [ForeignKey("University")]
-        [Required]
-        public int UniversityId { get; set; }
-        public University University { get; set; }
+        [Required(ErrorMessage = "Department Name is required.")] 
+        public string? DepartmentName { get; set; } // Name of the department.
+
+        public string? DepartmentHead { get; set; } // Optional name of the department head.
+
+        [ForeignKey("University")] // Establishes a foreign key relationship with the University table.
+        [Required] 
+        public int UniversityId { get; set; } // Foreign key pointing to the associated university.
+
+        public University University { get; set; } // Navigation property to the associated university.
     }
 }
